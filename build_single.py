@@ -5,11 +5,9 @@ import os
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
-# 读取 index.html
 with open(os.path.join(base_dir, 'index.html'), 'r', encoding='utf-8') as f:
     html = f.read()
 
-# 需要内联的外部脚本映射
 script_map = {
     'data.js?v=4.0': 'data.js',
     'scales.js?v=4.0': 'scales.js',
@@ -22,7 +20,6 @@ script_map = {
     'pain-protocols.js?v=4.0': 'pain-protocols.js',
 }
 
-# 逐个替换
 for src_attr, filename in script_map.items():
     filepath = os.path.join(base_dir, filename)
     if not os.path.exists(filepath):
@@ -41,23 +38,9 @@ for src_attr, filename in script_map.items():
     else:
         print(f"警告: 未找到标签 {old_tag}")
 
-# 同时更新版本号
-html = html.replace('<title>肌骨康复速查 V4.0 专业版</title>', '<title>肌骨康复速查 V4.0 专业版（单文件）</title>')
-# 替换整段 Service Worker 注册代码
-html = html.replace(
-    """      navigator.serviceWorker.register('service-worker.js?v=4.0')
-        .then(function(registration) {
-          console.log('ServiceWorker registration successful');
-          registration.update();
-        })
-        .catch(function(err) {
-          console.log('ServiceWorker registration failed: ', err);
-        });""",
-    "      // 单文件版本不使用 Service Worker"
-)
+html = html.replace('<title>肌骨康复速查 V5.0 专业版</title>', '<title>肌骨康复速查 V5.0 专业版（单文件）</title>')
 
-# 保存单文件版本
-output_path = os.path.join(base_dir, 'single-file-v4.html')
+output_path = os.path.join(base_dir, 'single-file-v5.html')
 with open(output_path, 'w', encoding='utf-8') as f:
     f.write(html)
 
