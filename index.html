@@ -236,6 +236,33 @@ body { display: flex; flex-direction: column; width: 100%; max-width: 100%; marg
   min-height: 52px;
 }
 .tab-item.active { color: var(--primary); font-weight: 600; }
+.tab-item.active .icon-wrap {
+  background: var(--brand-100);
+  border-radius: var(--radius-full);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.tab-item.active .icon-wrap::before {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+.tab-item[data-tab="muscle"].active .icon-wrap { background: linear-gradient(135deg, rgba(75,63,227,0.12), rgba(75,63,227,0.08)); color: var(--bg-brand); }
+.tab-item[data-tab="diagnosis"].active .icon-wrap { background: linear-gradient(135deg, rgba(239,68,68,0.12), rgba(249,115,22,0.08)); color: var(--danger); }
+.tab-item[data-tab="assessment"].active .icon-wrap { background: linear-gradient(135deg, rgba(13,148,136,0.12), rgba(20,184,166,0.08)); color: var(--success); }
+.tab-item[data-tab="tools"].active .icon-wrap { background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(251,191,36,0.08)); color: var(--warning); }
+.tab-item[data-tab="guidelines"].active .icon-wrap { background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(96,165,250,0.08)); color: var(--accent-blue); }
+.tab-item[data-tab="protocol"].active .icon-wrap { background: linear-gradient(135deg, rgba(168,85,247,0.12), rgba(192,132,252,0.08)); color: var(--accent-purple); }
+.tab-item[data-tab="dashboard"].active .icon-wrap { background: linear-gradient(135deg, rgba(236,72,153,0.12), rgba(244,114,182,0.08)); color: var(--accent-pink); }
+.tab-item[data-tab="patient"].active .icon-wrap { background: linear-gradient(135deg, rgba(6,182,212,0.12), rgba(34,211,238,0.08)); color: var(--accent-cyan); }
 .tab-item .icon { width: 26px; height: 26px; }
 .tab-item .icon svg { width: 100%; height: 100%; }
 
@@ -3131,35 +3158,35 @@ pre {
 
 <div class="tabbar">
   <div class="tab-item active" data-tab="muscle">
-    <span class="icon" id="tabMuscleIcon"></span>
+    <span class="icon-wrap"><span class="icon" id="tabMuscleIcon"></span></span>
     <span>肌肉</span>
   </div>
   <div class="tab-item" data-tab="diagnosis">
-    <span class="icon" id="tabDiagnosisIcon"></span>
+    <span class="icon-wrap"><span class="icon" id="tabDiagnosisIcon"></span></span>
     <span>诊断</span>
   </div>
   <div class="tab-item" data-tab="assessment">
-    <span class="icon" id="tabAssessmentIcon"></span>
+    <span class="icon-wrap"><span class="icon" id="tabAssessmentIcon"></span></span>
     <span>评估</span>
   </div>
   <div class="tab-item" data-tab="tools">
-    <span class="icon" id="tabToolsIcon"></span>
+    <span class="icon-wrap"><span class="icon" id="tabToolsIcon"></span></span>
     <span>工具</span>
   </div>
   <div class="tab-item" data-tab="guidelines">
-    <span class="icon" id="tabGuidelinesIcon"></span>
+    <span class="icon-wrap"><span class="icon" id="tabGuidelinesIcon"></span></span>
     <span>指南</span>
   </div>
   <div class="tab-item" data-tab="protocol">
-    <span class="icon" id="tabProtocolIcon"></span>
+    <span class="icon-wrap"><span class="icon" id="tabProtocolIcon"></span></span>
     <span>方案</span>
   </div>
   <div class="tab-item" data-tab="dashboard">
-    <span class="icon" id="tabDashboardIcon"></span>
+    <span class="icon-wrap"><span class="icon" id="tabDashboardIcon"></span></span>
     <span>看板</span>
   </div>
   <div class="tab-item" data-tab="patient">
-    <span class="icon" id="tabPatientIcon"></span>
+    <span class="icon-wrap"><span class="icon" id="tabPatientIcon"></span></span>
     <span>病例</span>
   </div>
 </div>
@@ -3195,7 +3222,7 @@ const iconSvg = {
   head: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5"/><path d="M9 18l1.5 2 1.5-2 1.5 2 1.5-2"/></svg>',
   neck: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><path d="M9 8v3M15 8v3M8 11h8"/><path d="M6 11h12l-1.5 4h-9L6 11z"/></svg>',
   shoulder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>',
-  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-4z"/><path d="M12 6v12"/></svg>',
+  backBody: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v6c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-4z"/><path d="M12 6v12"/></svg>',
   chest: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v7c0 4-2.5 7-6 7s-6-3-6-7V4z"/><path d="M6 8h12"/></svg>',
   arm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c4-2 8-2 12 0v4c0 2 1 3 2 4v6c0 2-2 3-4 2-2-1-4-1-6 0-2 1-4 1-6 0-2-1-4 0-4-2v-6c1-1 2-2 2-4V6z"/></svg>',
   hand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v8M12 2v9M16 3v8M4 6v7M20 7v7"/><path d="M4 13c0 5 3 8 8 8h5c0 0-3 0-8 3-5-3-8-5-8-8v-3z"/></svg>',
@@ -3297,10 +3324,12 @@ function initIcons() {
 const pages = ['muscle', 'diagnosis', 'assessment', 'tools', 'guidelines', 'patient'];
 let currentTab = 'muscle';
 let pageHistory = [];
+let currentPage = null;
 
 function switchTab(tab) {
   currentTab = tab;
   pageHistory = [];
+  currentPage = null;
   document.querySelectorAll('.tab-item').forEach(el => {
     el.classList.toggle('active', el.dataset.tab === tab);
   });
@@ -3350,17 +3379,37 @@ document.getElementById('navBack').addEventListener('click', goBack);
 function goBack() {
   if (pageHistory.length > 0) {
     const prev = pageHistory.pop();
-    showPage(prev, false);
+    if (prev.pageName === null) {
+      document.getElementById('navBack').style.display = 'none';
+      currentPage = null;
+      switchTab(currentTab);
+    } else {
+      showPage(prev.pageName, false);
+      if (prev.title) {
+        document.getElementById('navTitle').textContent = prev.title;
+      }
+      if (prev.scrollTop !== undefined) {
+        setTimeout(() => {
+          document.getElementById('content').scrollTop = prev.scrollTop;
+        }, 50);
+      }
+    }
   } else {
     document.getElementById('navBack').style.display = 'none';
+    currentPage = null;
     switchTab(currentTab);
   }
 }
 
 function showPage(pageName, pushHistory) {
   if (pushHistory !== false) {
-    pageHistory.push({ tab: currentTab, scrollTop: document.getElementById('content').scrollTop });
+    pageHistory.push({ 
+      pageName: currentPage, 
+      scrollTop: document.getElementById('content').scrollTop,
+      title: document.getElementById('navTitle').textContent
+    });
   }
+  currentPage = pageName;
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
   const pageEl = document.getElementById('page-' + pageName);
   if (pageEl) {
@@ -3469,8 +3518,8 @@ const muscleRegionMap = {
   '头颈部': { id: 'neck', icon: 'head' },
   '肩部': { id: 'upperarm', icon: 'shoulder' },
   '上肢': { id: 'upperarm', icon: 'arm' },
-  '背部': { id: 'back', icon: 'back' },
-  '背部深层': { id: 'back', icon: 'back' },
+  '背部': { id: 'back', icon: 'backBody' },
+  '背部深层': { id: 'back', icon: 'backBody' },
   '胸部': { id: 'trunk', icon: 'chest' },
   '腹部': { id: 'trunk', icon: 'chest' },
   '胸壁': { id: 'trunk', icon: 'chest' },
@@ -3638,8 +3687,8 @@ function showMuscleList(regionId, regionName) {
     document.getElementById('content').appendChild(pageEl);
   }
   
-  document.getElementById('navTitle').textContent = regionName;
   showPage(pageId);
+  document.getElementById('navTitle').textContent = regionName;
 }
 
 function findRelatedDiseases(muscleName, relatedDiseaseText) {
@@ -3851,8 +3900,8 @@ function showMuscleDetail(index) {
     document.getElementById('content').appendChild(pageEl);
   }
   
-  document.getElementById('navTitle').textContent = m['肌肉名称'] || '肌肉详情';
   showPage(pageId);
+  document.getElementById('navTitle').textContent = m['肌肉名称'] || '肌肉详情';
 }
 
 function renderDiseaseBodyGrid() {
@@ -3911,8 +3960,8 @@ function showDiseaseList(regionId, regionName) {
     document.getElementById('content').appendChild(pageEl);
   }
   
-  document.getElementById('navTitle').textContent = regionName;
   showPage(pageId);
+  document.getElementById('navTitle').textContent = regionName;
 }
 
 function showDiseaseDetail(index) {
@@ -4059,8 +4108,8 @@ function showDiseaseDetail(index) {
     document.getElementById('content').appendChild(pageEl);
   }
   
-  document.getElementById('navTitle').textContent = d['具体病症'] || '疾病详情';
   showPage(pageId);
+  document.getElementById('navTitle').textContent = d['具体病症'] || '疾病详情';
 }
 
 function toggleAccordion(headerEl) {
@@ -4551,8 +4600,8 @@ function showToolDetail(idx) {
     document.getElementById('content').appendChild(pageEl);
   }
   
-  document.getElementById('navTitle').textContent = t.name;
   showPage(pageId);
+  document.getElementById('navTitle').textContent = t.name;
 }
 
 let currentGuidelineCategory = '全部';
@@ -4651,8 +4700,8 @@ function showGuidelineDetail(idx) {
     document.getElementById('content').appendChild(pageEl);
   }
   
-  document.getElementById('navTitle').textContent = g.title;
   showPage(pageId);
+  document.getElementById('navTitle').textContent = g.title;
 }
 
 function renderScaleLibrary() {
