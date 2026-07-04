@@ -232,10 +232,41 @@ body { display: flex; flex-direction: column; width: 100%; max-width: 100%; marg
   cursor: pointer;
   color: var(--text-3);
   font-size: 12px;
-  transition: color 0.2s;
+  transition: color 0.2s, background 0.2s;
   min-height: 52px;
+  position: relative;
+  overflow: hidden;
 }
 .tab-item.active { color: var(--primary); font-weight: 600; }
+.tab-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  opacity: 0.35;
+  transition: opacity 0.2s, width 0.2s;
+}
+.tab-item.active::before { opacity: 1; width: 36px; }
+.tab-item[data-tab="muscle"]::before { background: #4b3fe3; }
+.tab-item[data-tab="diagnosis"]::before { background: #ef4444; }
+.tab-item[data-tab="assessment"]::before { background: #0d9488; }
+.tab-item[data-tab="tools"]::before { background: #f59e0b; }
+.tab-item[data-tab="guidelines"]::before { background: #3b82f6; }
+.tab-item[data-tab="protocol"]::before { background: #a855f7; }
+.tab-item[data-tab="dashboard"]::before { background: #ec4899; }
+.tab-item[data-tab="patient"]::before { background: #06b6d4; }
+.tab-item.active[data-tab="muscle"] { background: linear-gradient(180deg, rgba(75,63,227,0.08), transparent 60%); }
+.tab-item.active[data-tab="diagnosis"] { background: linear-gradient(180deg, rgba(239,68,68,0.08), transparent 60%); }
+.tab-item.active[data-tab="assessment"] { background: linear-gradient(180deg, rgba(13,148,136,0.08), transparent 60%); }
+.tab-item.active[data-tab="tools"] { background: linear-gradient(180deg, rgba(245,158,11,0.08), transparent 60%); }
+.tab-item.active[data-tab="guidelines"] { background: linear-gradient(180deg, rgba(59,130,246,0.08), transparent 60%); }
+.tab-item.active[data-tab="protocol"] { background: linear-gradient(180deg, rgba(168,85,247,0.08), transparent 60%); }
+.tab-item.active[data-tab="dashboard"] { background: linear-gradient(180deg, rgba(236,72,153,0.08), transparent 60%); }
+.tab-item.active[data-tab="patient"] { background: linear-gradient(180deg, rgba(6,182,212,0.08), transparent 60%); }
 .tab-item.active .icon-wrap {
   background: var(--brand-100);
   border-radius: var(--radius-full);
@@ -255,14 +286,14 @@ body { display: flex; flex-direction: column; width: 100%; max-width: 100%; marg
   border-radius: 50%;
   background: var(--primary);
 }
-.tab-item[data-tab="muscle"].active .icon-wrap { background: linear-gradient(135deg, rgba(75,63,227,0.12), rgba(75,63,227,0.08)); color: var(--bg-brand); }
-.tab-item[data-tab="diagnosis"].active .icon-wrap { background: linear-gradient(135deg, rgba(239,68,68,0.12), rgba(249,115,22,0.08)); color: var(--danger); }
-.tab-item[data-tab="assessment"].active .icon-wrap { background: linear-gradient(135deg, rgba(13,148,136,0.12), rgba(20,184,166,0.08)); color: var(--success); }
-.tab-item[data-tab="tools"].active .icon-wrap { background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(251,191,36,0.08)); color: var(--warning); }
-.tab-item[data-tab="guidelines"].active .icon-wrap { background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(96,165,250,0.08)); color: var(--accent-blue); }
-.tab-item[data-tab="protocol"].active .icon-wrap { background: linear-gradient(135deg, rgba(168,85,247,0.12), rgba(192,132,252,0.08)); color: var(--accent-purple); }
-.tab-item[data-tab="dashboard"].active .icon-wrap { background: linear-gradient(135deg, rgba(236,72,153,0.12), rgba(244,114,182,0.08)); color: var(--accent-pink); }
-.tab-item[data-tab="patient"].active .icon-wrap { background: linear-gradient(135deg, rgba(6,182,212,0.12), rgba(34,211,238,0.08)); color: var(--accent-cyan); }
+.tab-item[data-tab="muscle"].active .icon-wrap { background: linear-gradient(135deg, rgba(75,63,227,0.15), rgba(75,63,227,0.08)); color: #4b3fe3; }
+.tab-item[data-tab="diagnosis"].active .icon-wrap { background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(249,115,22,0.08)); color: #ef4444; }
+.tab-item[data-tab="assessment"].active .icon-wrap { background: linear-gradient(135deg, rgba(13,148,136,0.15), rgba(20,184,166,0.08)); color: #0d9488; }
+.tab-item[data-tab="tools"].active .icon-wrap { background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(251,191,36,0.08)); color: #f59e0b; }
+.tab-item[data-tab="guidelines"].active .icon-wrap { background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(96,165,250,0.08)); color: #3b82f6; }
+.tab-item[data-tab="protocol"].active .icon-wrap { background: linear-gradient(135deg, rgba(168,85,247,0.15), rgba(192,132,252,0.08)); color: #a855f7; }
+.tab-item[data-tab="dashboard"].active .icon-wrap { background: linear-gradient(135deg, rgba(236,72,153,0.15), rgba(244,114,182,0.08)); color: #ec4899; }
+.tab-item[data-tab="patient"].active .icon-wrap { background: linear-gradient(135deg, rgba(6,182,212,0.15), rgba(34,211,238,0.08)); color: #06b6d4; }
 .tab-item .icon { width: 26px; height: 26px; }
 .tab-item .icon svg { width: 100%; height: 100%; }
 
