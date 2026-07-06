@@ -241,24 +241,26 @@ body { display: flex; flex-direction: column; width: 100%; max-width: 100%; marg
 .tab-item::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: all 0.25s ease;
   z-index: 0;
 }
-.tab-item.active::before { opacity: 1; }
+.tab-item.active::before { opacity: 1; width: 56px; height: 56px; }
 .tab-item > * { position: relative; z-index: 1; }
-.tab-item[data-tab="muscle"]::before { background: var(--brand-50); }
-.tab-item[data-tab="diagnosis"]::before { background: var(--status-error-surface-l1); }
-.tab-item[data-tab="assessment"]::before { background: var(--status-success-surface-l1); }
-.tab-item[data-tab="tools"]::before { background: var(--status-alert-surface-l1); }
-.tab-item[data-tab="guidelines"]::before { background: var(--status-primary-surface-l1); }
-.tab-item[data-tab="protocol"]::before { background: var(--brand-purple-100); }
-.tab-item[data-tab="dashboard"]::before { background: var(--brand-red-100); }
-.tab-item[data-tab="patient"]::before { background: rgba(0, 182, 245, 0.1); }
+.tab-item[data-tab="muscle"]::before { background: var(--brand-100); }
+.tab-item[data-tab="diagnosis"]::before { background: rgba(232, 70, 58, 0.18); }
+.tab-item[data-tab="assessment"]::before { background: rgba(21, 168, 119, 0.18); }
+.tab-item[data-tab="tools"]::before { background: rgba(254, 169, 0, 0.18); }
+.tab-item[data-tab="guidelines"]::before { background: rgba(47, 116, 255, 0.18); }
+.tab-item[data-tab="protocol"]::before { background: rgba(76, 55, 230, 0.18); }
+.tab-item[data-tab="dashboard"]::before { background: rgba(230, 55, 55, 0.18); }
+.tab-item[data-tab="patient"]::before { background: rgba(0, 182, 245, 0.18); }
 .tab-item.active[data-tab="muscle"] { color: var(--bg-brand); }
 .tab-item.active[data-tab="diagnosis"] { color: var(--status-error-default); }
 .tab-item.active[data-tab="assessment"] { color: var(--status-success-default); }
