@@ -212,8 +212,8 @@ body { display: flex; flex-direction: column; width: 100%; max-width: 100%; marg
 .tabbar {
   height: calc(var(--tab-height) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
-  background: var(--bg-2);
-  border-top: 1px solid var(--border);
+  background: var(--bg-base-secondary);
+  border-top: 1px solid var(--border-neutral-l1);
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -230,14 +230,14 @@ body { display: flex; flex-direction: column; width: 100%; max-width: 100%; marg
   gap: 3px;
   padding: 10px 0;
   cursor: pointer;
-  color: var(--text-3);
   font-size: 12px;
-  transition: color 0.2s, background 0.2s;
+  transition: all 0.25s ease;
   min-height: 52px;
   position: relative;
   overflow: hidden;
+  color: var(--icon-tertiary);
 }
-.tab-item.active { font-weight: 600; }
+.tab-item.active { color: var(--bg-brand); font-weight: 600; }
 .tab-item::before {
   content: '';
   position: absolute;
@@ -245,46 +245,28 @@ body { display: flex; flex-direction: column; width: 100%; max-width: 100%; marg
   left: 0;
   right: 0;
   bottom: 0;
-  opacity: 0.55;
-  transition: opacity 0.2s;
+  opacity: 0;
+  transition: opacity 0.25s ease;
   z-index: 0;
 }
 .tab-item.active::before { opacity: 1; }
 .tab-item > * { position: relative; z-index: 1; }
-.tab-item[data-tab="muscle"]::before { background: #4b3fe3; }
-.tab-item[data-tab="diagnosis"]::before { background: #ef4444; }
-.tab-item[data-tab="assessment"]::before { background: #0d9488; }
-.tab-item[data-tab="tools"]::before { background: #f59e0b; }
-.tab-item[data-tab="guidelines"]::before { background: #3b82f6; }
-.tab-item[data-tab="protocol"]::before { background: #a855f7; }
-.tab-item[data-tab="dashboard"]::before { background: #ec4899; }
-.tab-item[data-tab="patient"]::before { background: #06b6d4; }
-.tab-item[data-tab="muscle"] { color: rgba(255,255,255,0.7); }
-.tab-item[data-tab="diagnosis"] { color: rgba(255,255,255,0.7); }
-.tab-item[data-tab="assessment"] { color: rgba(255,255,255,0.7); }
-.tab-item[data-tab="tools"] { color: rgba(255,255,255,0.7); }
-.tab-item[data-tab="guidelines"] { color: rgba(255,255,255,0.7); }
-.tab-item[data-tab="protocol"] { color: rgba(255,255,255,0.7); }
-.tab-item[data-tab="dashboard"] { color: rgba(255,255,255,0.7); }
-.tab-item[data-tab="patient"] { color: rgba(255,255,255,0.7); }
-.tab-item.active[data-tab="muscle"] { color: #fff; }
-.tab-item.active[data-tab="diagnosis"] { color: #fff; }
-.tab-item.active[data-tab="assessment"] { color: #fff; }
-.tab-item.active[data-tab="tools"] { color: #fff; }
-.tab-item.active[data-tab="guidelines"] { color: #fff; }
-.tab-item.active[data-tab="protocol"] { color: #fff; }
-.tab-item.active[data-tab="dashboard"] { color: #fff; }
-.tab-item.active[data-tab="patient"] { color: #fff; }
-.tab-item.active .icon-wrap {
-  border-radius: var(--radius-full);
-  width: 44px;
-  height: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  background: rgba(255,255,255,0.25);
-}
+.tab-item[data-tab="muscle"]::before { background: var(--brand-50); }
+.tab-item[data-tab="diagnosis"]::before { background: var(--status-error-surface-l1); }
+.tab-item[data-tab="assessment"]::before { background: var(--status-success-surface-l1); }
+.tab-item[data-tab="tools"]::before { background: var(--status-alert-surface-l1); }
+.tab-item[data-tab="guidelines"]::before { background: var(--status-primary-surface-l1); }
+.tab-item[data-tab="protocol"]::before { background: var(--brand-purple-100); }
+.tab-item[data-tab="dashboard"]::before { background: var(--brand-red-100); }
+.tab-item[data-tab="patient"]::before { background: rgba(0, 182, 245, 0.1); }
+.tab-item.active[data-tab="muscle"] { color: var(--bg-brand); }
+.tab-item.active[data-tab="diagnosis"] { color: var(--status-error-default); }
+.tab-item.active[data-tab="assessment"] { color: var(--status-success-default); }
+.tab-item.active[data-tab="tools"] { color: var(--status-alert-default); }
+.tab-item.active[data-tab="guidelines"] { color: var(--status-primary-default); }
+.tab-item.active[data-tab="protocol"] { color: var(--brand-purple-700); }
+.tab-item.active[data-tab="dashboard"] { color: var(--brand-red-700); }
+.tab-item.active[data-tab="patient"] { color: var(--accent-cyan); }
 .tab-item .icon-wrap {
   width: 44px;
   height: 44px;
@@ -292,7 +274,19 @@ body { display: flex; flex-direction: column; width: 100%; max-width: 100%; marg
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
+  transition: background 0.25s ease;
 }
+.tab-item.active .icon-wrap {
+  background: var(--brand-100);
+}
+.tab-item[data-tab="muscle"].active .icon-wrap { background: var(--brand-100); }
+.tab-item[data-tab="diagnosis"].active .icon-wrap { background: rgba(232, 70, 58, 0.15); }
+.tab-item[data-tab="assessment"].active .icon-wrap { background: rgba(21, 168, 119, 0.15); }
+.tab-item[data-tab="tools"].active .icon-wrap { background: rgba(254, 169, 0, 0.15); }
+.tab-item[data-tab="guidelines"].active .icon-wrap { background: rgba(47, 116, 255, 0.15); }
+.tab-item[data-tab="protocol"].active .icon-wrap { background: rgba(76, 55, 230, 0.15); }
+.tab-item[data-tab="dashboard"].active .icon-wrap { background: rgba(230, 55, 55, 0.15); }
+.tab-item[data-tab="patient"].active .icon-wrap { background: rgba(0, 182, 245, 0.15); }
 .tab-item .icon { width: 26px; height: 26px; }
 .tab-item .icon svg { width: 100%; height: 100%; }
 
