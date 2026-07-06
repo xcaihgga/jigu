@@ -1648,6 +1648,7 @@ body { display: flex; flex-direction: column; width: 100%; max-width: 100%; marg
 .protocol-card-icon[data-cat="PT"] { background:#eff6ff; color:#2563eb; }
 .protocol-card-icon[data-cat="OT"] { background:#ecfdf5; color:var(--accent-teal); }
 .protocol-card-icon[data-cat="ST"] { background:#fffbeb; color:var(--accent-amber); }
+.protocol-card-icon[data-cat="疼痛"] { background:#fef2f2; color:#ef4444; }
 .protocol-card-icon .icon { width:26px; height:26px; }
 .protocol-card-icon .icon svg { width:100%; height:100%; }
 .protocol-card-info { flex:1; min-width:0; }
@@ -1658,6 +1659,7 @@ body { display: flex; flex-direction: column; width: 100%; max-width: 100%; marg
 .protocol-card-badge[data-cat="PT"] { background:#eff6ff; color:#2563eb; }
 .protocol-card-badge[data-cat="OT"] { background:#ecfdf5; color:var(--accent-teal); }
 .protocol-card-badge[data-cat="ST"] { background:#fffbeb; color:var(--accent-amber); }
+.protocol-card-badge[data-cat="疼痛"] { background:#fef2f2; color:#ef4444; }
 .protocol-card-stages { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
 .protocol-stage-tag { font-size:11px; padding:3px 8px; border-radius:6px; background:var(--bg-3); color:var(--text-2); }
 
@@ -6254,10 +6256,10 @@ function renderProtocolList() {
         '<div class="protocol-card-icon" data-cat="' + p.category + '">' + icon(p.icon || 'protocol', 26) + '</div>' +
         '<div class="protocol-card-info">' +
           '<div class="protocol-card-title">' + p.name + '</div>' +
-          '<div class="protocol-card-evidence">循证来源：' + (p.evidence || '') + '</div>' +
+          '<div class="protocol-card-evidence">循证来源：' + (p.evidence || '临床实践共识') + '</div>' +
         '</div>' +
       '</div>' +
-      '<div class="protocol-card-desc">' + (p.description || '') + '</div>' +
+      '<div class="protocol-card-desc">' + (p.description || (p.causes ? '针对' + p.name + '的分阶段疼痛管理方案，涵盖病因分析与分期干预。' : '')) + '</div>' +
       '<span class="protocol-card-badge" data-cat="' + p.category + '">' + p.categoryName + '</span>' +
       (p.isPro ? ' <span class="pro-badge">PRO</span>' : '') +
       (p.isPain ? ' <span style="display:inline-block;padding:2px 8px;background:linear-gradient(135deg,var(--status-error-default),#dc2626);color:#fff;font-size:11px;font-weight:600;border-radius:20px;margin-left:4px;">疼痛</span>' : '') +
@@ -6322,11 +6324,10 @@ function showProtocolDetail(id) {
   container.innerHTML = '<div class="protocol-detail">' +
     '<div class="protocol-detail-header">' +
       '<div class="protocol-detail-title">' + p.name + (p.isPro ? ' <span class="pro-badge">PRO</span>' : '') + (p.isPain ? ' <span style="display:inline-block;padding:2px 8px;background:linear-gradient(135deg,var(--status-error-default),#dc2626);color:#fff;font-size:11px;font-weight:600;border-radius:20px;">疼痛</span>' : '') + '</div>' +
-      '<div class="protocol-detail-evidence">循证来源：' + (p.evidence || '') + '</div>' +
-      '<div class="protocol-detail-desc">' + (p.description || '') + '</div>' +
+      '<div class="protocol-detail-evidence">循证来源：' + (p.evidence || '临床实践共识') + '</div>' +
+      '<div class="protocol-detail-desc">' + (p.description || (p.causes ? '针对' + p.name + '的分阶段疼痛管理方案，涵盖病因分析、临床表现与分期干预。' : '')) + '</div>' +
       '<span class="protocol-card-badge" data-cat="' + p.category + '" style="margin-top:8px;">' + p.categoryName + '</span>' +
     '</div>' +
-    illustrationHtml(getIllustration(null, p.name + p.category), p.name) +
     extraHtml +
     '<div style="padding:0 16px 20px;">' + stagesHtml + '</div>' +
   '</div>';
