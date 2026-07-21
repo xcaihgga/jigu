@@ -8,6 +8,12 @@
 (function () {
   'use strict';
 
+  var _loadStartTime = Date.now();
+  var _loadTimeout = null;
+  var _retryCount = 0;
+  var _maxRetries = 3;
+  var _isLoading = false;
+
   // 更新加载提示文字
   function setLoadingText(text, sub) {
     var el = document.getElementById('loadingText');
@@ -18,6 +24,7 @@
 
   // 显示错误提示
   function showError(msg, sub) {
+    window.__errorShown = true;
     var errOverlay = document.getElementById('errorOverlay');
     var errText = document.getElementById('errorText');
     var errSub = document.getElementById('errorSub');
@@ -30,6 +37,14 @@
 
   // 暴露错误显示函数给 app.js 使用（超时调用）
   window.__showLoadError = showError;
+
+  // 清除加载超时定时器
+  function clearLoadTimeout() {
+    if (_loadTimeout) {
+      clearTimeout(_loadTimeout);
+      _loadTimeout = null;
+    }
+  }
 
   // 解析肌肉数据，确保字段完整
   function parseMuscles(ms) {
@@ -98,51 +113,77 @@
 
   // 异步加载数据主流程
   function loadData() {
+    if (_isLoading) { return; }
+    _isLoading = true;
+
     setLoadingText('正在加载数据...', '正在准备肌骨康复知识库');
 
-    // 兼容性 fetch
-    var useFetch = (typeof fetch !== 'undefined');
-
-    if (useFetch) {
-      fetch('data.min.json?v=' + Date.now(), { cache: 'no-cache' })
-        .then(function (res) {
-          if (!res.ok) {
-            throw new Error('HTTP ' + res.status);
-          }
-          return res.json();
-        })
-        .then(function (data) {
-          onDataLoaded(data);
-        })
-        .catch(function (err) {
-          showError('数据加载失败', (err && err.message) ? err.message : '请检查 data.min.json 是否存在');
-        });
-    } else {
-      // 降级使用 XMLHttpRequest
-      try {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', 'data.min.json?v=' + Date.now(), true);
-        xhr.onreadystatechange = function () {
-          if (xhr.readyState === 4) {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                var data = JSON.parse(xhr.responseText);
-                onDataLoaded(data);
-              } catch (e) {
-                showError('数据解析失败', 'JSON 格式错误');
-              }
-            } else {
-              showError('数据加载失败', 'HTTP ' + xhr.status);
-            }
-          }
-        };
-        xhr.onerror = function () {
-          showError('网络错误', '请检查网络连接后重试');
-        };
-        xhr.send();
-      } catch (e) {
-        showError('加载失败', e.message || '未知错误');
+    clearLoadTimeout();
+    _loadTimeout = setTimeout(function () {
+      if (!window.__dataReady) {
+        handleLoadFailure('加载超时', '网络连接不稳定，请检查网络后点击重新加载');
       }
+    }, 30000);
+
+    try {
+      var xhr = new XMLHttpRequest();
+      var url = 'data.min.json?v=' + Date.now();
+      xhr.open('GET', url, true);
+      xhr.responseType = 'json';
+
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+          _isLoading = false;
+          clearLoadTimeout();
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              var data = xhr.response;
+              if (!data) {
+                data = JSON.parse(xhr.responseText);
+              }
+              onDataLoaded(data);
+            } catch (e) {
+              handleLoadFailure('数据解析失败', 'JSON 格式错误');
+            }
+          } else {
+            handleLoadFailure('数据加载失败', 'HTTP ' + xhr.status + ' ' + (xhr.statusText || ''));
+          }
+        }
+      };
+
+      xhr.onerror = function () {
+        _isLoading = false;
+        clearLoadTimeout();
+        handleLoadFailure('网络错误', '无法连接到服务器，请检查网络');
+      };
+
+      xhr.ontimeout = function () {
+        _isLoading = false;
+        clearLoadTimeout();
+        handleLoadFailure('请求超时', '服务器响应时间过长');
+      };
+
+      xhr.timeout = 25000;
+      xhr.send();
+    } catch (e) {
+      _isLoading = false;
+      clearLoadTimeout();
+      handleLoadFailure('加载失败', e.message || '未知错误');
+    }
+  }
+
+  // 加载失败处理（支持重试）
+  function handleLoadFailure(msg, sub) {
+    _retryCount++;
+    if (_retryCount <= _maxRetries) {
+      var delay = Math.pow(2, _retryCount) * 1000;
+      console.warn('YZX load failed, retrying ' + _retryCount + '/' + _maxRetries + ' in ' + delay + 'ms');
+      setTimeout(function () {
+        setLoadingText('重试加载...', '第 ' + _retryCount + ' 次尝试');
+        loadData();
+      }, delay);
+    } else {
+      showError(msg, sub);
     }
   }
 

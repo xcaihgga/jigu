@@ -3,6 +3,185 @@
 // 纯 ES5 语法，兼容旧浏览器
 // ============================================================
 
+// ===== 第一层防护：全局错误捕获 =====
+(function () {
+  var _originalErrorHandler = window.onerror;
+  window.onerror = function (message, source, lineno, colno, error) {
+    try {
+      var errMsg = '[' + (new Date()).toLocaleTimeString() + '] ';
+      errMsg += (typeof message === 'string') ? message : 'Unknown error';
+      if (source) { errMsg += ' @ ' + source; }
+      if (lineno) { errMsg += ':' + lineno; }
+      console.error('YZX Error:', errMsg);
+
+      var errOverlay = document.getElementById('errorOverlay');
+      if (errOverlay && !window.__errorShown) {
+        window.__errorShown = true;
+        var loading = document.getElementById('loadingOverlay');
+        if (loading) { loading.style.display = 'none'; }
+
+        var errText = document.getElementById('errorText');
+        var errSub = document.getElementById('errorSub');
+        if (errText) { errText.textContent = '应用运行错误'; }
+        if (errSub) { errSub.textContent = '请刷新页面重试'; }
+        errOverlay.style.display = 'flex';
+      }
+    } catch (e) {
+      console.error('Error handler itself failed:', e);
+    }
+    if (_originalErrorHandler) {
+      return _originalErrorHandler(message, source, lineno, colno, error);
+    }
+    return true;
+  };
+
+  window.addEventListener('unhandledrejection', function (event) {
+    console.error('YZX Unhandled Promise Rejection:', event.reason);
+    if (!window.__errorShown) {
+      window.__errorShown = true;
+      var errOverlay = document.getElementById('errorOverlay');
+      var loading = document.getElementById('loadingOverlay');
+      if (loading) { loading.style.display = 'none'; }
+      if (errOverlay) {
+        var errText = document.getElementById('errorText');
+        var errSub = document.getElementById('errorSub');
+        if (errText) { errText.textContent = '应用运行错误'; }
+        if (errSub) { errSub.textContent = '请刷新页面重试'; }
+        errOverlay.style.display = 'flex';
+      }
+    }
+  });
+})();
+
+// ===== 第二层防护：localStorage 溢出保护 =====
+(function () {
+  var STORAGE_KEYS = ['yizhixue_state', 'yizhixue_wrong', 'yizhixue_daily', 'yizhixue_stats'];
+
+  function safeSetItem(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (e) {
+      if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        console.warn('YZX localStorage overflow, clearing old data...');
+        for (var i = 0; i < STORAGE_KEYS.length; i++) {
+          try {
+            localStorage.removeItem(STORAGE_KEYS[i]);
+          } catch (e2) {}
+        }
+        try {
+          localStorage.setItem(key, value);
+          return true;
+        } catch (e3) {
+          return false;
+        }
+      }
+      return false;
+    }
+  }
+
+  function safeGetItem(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function safeRemoveItem(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {}
+  }
+
+  window.__safeStorage = {
+    set: safeSetItem,
+    get: safeGetItem,
+    remove: safeRemoveItem
+  };
+})();
+
+// ===== 第三层防护：数组边界检查和空值保护 =====
+function safeIndex(arr, idx) {
+  if (!arr || !Array.isArray(arr)) { return undefined; }
+  if (idx < 0 || idx >= arr.length) { return undefined; }
+  return arr[idx];
+}
+
+function safeProp(obj, prop) {
+  if (!obj || typeof obj !== 'object') { return ''; }
+  return obj[prop] || '';
+}
+
+function safeLength(arr) {
+  if (!arr || !Array.isArray(arr)) { return 0; }
+  return arr.length;
+}
+
+function safeString(val) {
+  if (val === null || val === undefined) { return ''; }
+  return String(val);
+}
+
+function safeParseJSON(str) {
+  if (!str || typeof str !== 'string') { return null; }
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    console.warn('YZX safeParseJSON failed:', e);
+    return null;
+  }
+}
+
+function safeGetElement(id) {
+  if (!id || typeof id !== 'string') { return null; }
+  try {
+    return document.getElementById(id);
+  } catch (e) {
+    console.warn('YZX safeGetElement failed:', e);
+    return null;
+  }
+}
+
+function safeQuerySelector(selector) {
+  if (!selector || typeof selector !== 'string') { return null; }
+  try {
+    return document.querySelector(selector);
+  } catch (e) {
+    console.warn('YZX safeQuerySelector failed:', e);
+    return null;
+  }
+}
+
+function safeQuerySelectorAll(selector) {
+  if (!selector || typeof selector !== 'string') { return []; }
+  try {
+    var result = document.querySelectorAll(selector);
+    return Array.prototype.slice.call(result);
+  } catch (e) {
+    console.warn('YZX safeQuerySelectorAll failed:', e);
+    return [];
+  }
+}
+
+function safeSetInnerHTML(el, html) {
+  if (!el || typeof el.innerHTML === 'undefined') { return; }
+  try {
+    el.innerHTML = html;
+  } catch (e) {
+    console.warn('YZX safeSetInnerHTML failed:', e);
+  }
+}
+
+function safeSetTextContent(el, text) {
+  if (!el || typeof el.textContent === 'undefined') { return; }
+  try {
+    el.textContent = text;
+  } catch (e) {
+    console.warn('YZX safeSetTextContent failed:', e);
+  }
+}
+
 // ===== 全局状态 =====
 var state = {
   coins: 0,
@@ -181,14 +360,15 @@ function shuffleArray(arr) {
 // 从题库随机抽取题目
 function getRandomQuestions(count) {
   var bank = [];
-  if (window.questionBank && window.questionBank.all) {
-    bank = window.questionBank.all;
-  } else if (window.questions && window.questions.length) {
+  var qb = safeProp(window, 'questionBank');
+  if (qb && qb.all) {
+    bank = qb.all;
+  } else if (window.questions && safeLength(window.questions) > 0) {
     bank = window.questions;
   }
-  if (!bank || bank.length === 0) { return []; }
+  if (!bank || safeLength(bank) === 0) { return []; }
   var shuffled = shuffleArray(bank);
-  var n = Math.min(count, shuffled.length);
+  var n = Math.min(count, safeLength(shuffled));
   return shuffled.slice(0, n);
 }
 
@@ -209,10 +389,11 @@ function getTodayStr() {
 
 function loadState() {
   try {
-    var raw = localStorage.getItem('yizhixue_state');
+    var safeStorage = window.__safeStorage || { get: function(k) { return localStorage.getItem(k); } };
+    var raw = safeStorage.get('yizhixue_state');
     if (raw) {
-      var saved = JSON.parse(raw);
-      if (saved) {
+      var saved = safeParseJSON(raw);
+      if (saved && typeof saved === 'object') {
         for (var k in saved) {
           if (saved.hasOwnProperty(k)) {
             state[k] = saved[k];
@@ -220,24 +401,28 @@ function loadState() {
         }
       }
     }
-    var wrongRaw = localStorage.getItem('yizhixue_wrong');
+    var wrongRaw = safeStorage.get('yizhixue_wrong');
     if (wrongRaw) {
-      var wrongSaved = JSON.parse(wrongRaw);
-      if (wrongSaved && wrongSaved.length) {
-        wrongQuestionBank = wrongSaved;
+      var wrongSaved = safeParseJSON(wrongRaw);
+      if (wrongSaved && Array.isArray(wrongSaved) && wrongSaved.length) {
+        wrongQuestionBank = wrongSaved.slice(0, 200);
       }
     }
   } catch (e) {
-    // 读取失败，使用默认状态
+    console.warn('YZX loadState failed:', e);
   }
 }
 
 function saveState() {
   try {
-    localStorage.setItem('yizhixue_state', JSON.stringify(state));
-    localStorage.setItem('yizhixue_wrong', JSON.stringify(wrongQuestionBank));
+    var safeStorage = window.__safeStorage || { set: function(k, v) { localStorage.setItem(k, v); } };
+    if (wrongQuestionBank.length > 200) {
+      wrongQuestionBank = wrongQuestionBank.slice(-200);
+    }
+    safeStorage.set('yizhixue_state', JSON.stringify(state));
+    safeStorage.set('yizhixue_wrong', JSON.stringify(wrongQuestionBank));
   } catch (e) {
-    // 存储失败，忽略
+    console.warn('YZX saveState failed:', e);
   }
 }
 
@@ -255,50 +440,65 @@ function updateLevel() {
 // ============================================================
 
 function init() {
-  loadState();
-  updateLevel();
+  try {
+    loadState();
+    updateLevel();
 
-  // 监听数据就绪事件
-  window.addEventListener('dataReady', onAppReady);
+    window.addEventListener('dataReady', onAppReady);
 
-  // 如果数据已经就绪（事件先触发），直接初始化
-  if (window.__dataReady) {
-    onAppReady();
-  }
-
-  // 15 秒超时检测
-  setTimeout(function () {
-    if (!window.__dataReady) {
-      if (window.__showLoadError) {
-        window.__showLoadError('加载超时', '15秒内未完成加载，请刷新重试');
-      } else {
-        var overlay = document.getElementById('loadingOverlay');
-        var err = document.getElementById('errorOverlay');
-        if (overlay) { overlay.style.display = 'none'; }
-        if (err) { err.style.display = 'flex'; }
-      }
+    if (window.__dataReady) {
+      onAppReady();
     }
-  }, 15000);
+
+    setTimeout(function () {
+      try {
+        if (!window.__dataReady) {
+          if (window.__showLoadError) {
+            window.__showLoadError('加载超时', '15秒内未完成加载，请刷新重试');
+          } else {
+            var overlay = safeGetElement('loadingOverlay');
+            var err = safeGetElement('errorOverlay');
+            if (overlay) { overlay.style.display = 'none'; }
+            if (err) { err.style.display = 'flex'; }
+          }
+        }
+      } catch (e) {
+        console.error('YZX init timeout check failed:', e);
+      }
+    }, 15000);
+  } catch (e) {
+    console.error('YZX init failed:', e);
+    var errOverlay = safeGetElement('errorOverlay');
+    var loading = safeGetElement('loadingOverlay');
+    if (loading) { loading.style.display = 'none'; }
+    if (errOverlay) { errOverlay.style.display = 'flex'; }
+  }
 }
 
 function onAppReady() {
-  if (!window.muscles || !window.diseases) { return; }
+  try {
+    if (!window.muscles || !window.diseases) { return; }
 
-  // 隐藏加载动画
-  var overlay = document.getElementById('loadingOverlay');
-  if (overlay) {
-    overlay.classList.add('hide');
-    setTimeout(function () {
-      overlay.style.display = 'none';
-    }, 300);
+    var overlay = safeGetElement('loadingOverlay');
+    if (overlay) {
+      overlay.classList.add('hide');
+      setTimeout(function () {
+        try {
+          overlay.style.display = 'none';
+        } catch (e) {}
+      }, 300);
+    }
+
+    checkDailyRefresh();
+    updateStats();
+    renderHomeContent();
+  } catch (e) {
+    console.error('YZX onAppReady failed:', e);
+    var errOverlay = safeGetElement('errorOverlay');
+    var loading = safeGetElement('loadingOverlay');
+    if (loading) { loading.style.display = 'none'; }
+    if (errOverlay) { errOverlay.style.display = 'flex'; }
   }
-
-  // 检查每日刷新
-  checkDailyRefresh();
-
-  // 渲染首页并更新统计
-  updateStats();
-  renderHomeContent();
 }
 
 // 每日刷新逻辑
@@ -350,45 +550,49 @@ function updateStats() {
 // ============================================================
 
 function switchTab(tab) {
-  currentTab = tab;
-  // 切换页面显示
-  var pages = document.querySelectorAll('.page');
-  for (var i = 0; i < pages.length; i++) {
-    pages[i].classList.remove('active');
-  }
-  var target = document.getElementById('page-' + tab);
-  if (target) { target.classList.add('active'); }
+  try {
+    if (!tab || typeof tab !== 'string') { return; }
+    currentTab = tab;
 
-  // 更新底部导航高亮
-  var tabs = document.querySelectorAll('.bottom-nav .tab');
-  for (var j = 0; j < tabs.length; j++) {
-    tabs[j].classList.remove('active');
-    if (tabs[j].getAttribute('data-tab') === tab) {
-      tabs[j].classList.add('active');
+    var pages = safeQuerySelectorAll('.page');
+    for (var i = 0; i < pages.length; i++) {
+      try {
+        pages[i].classList.remove('active');
+      } catch (e) {}
     }
+
+    var target = safeGetElement('page-' + tab);
+    if (target) { target.classList.add('active'); }
+
+    var tabs = safeQuerySelectorAll('.bottom-nav .tab');
+    for (var j = 0; j < tabs.length; j++) {
+      try {
+        tabs[j].classList.remove('active');
+        if (tabs[j].getAttribute('data-tab') === tab) {
+          tabs[j].classList.add('active');
+        }
+      } catch (e) {}
+    }
+
+    navHistory = [tab];
+    setBackButton(false);
+
+    if (tab === 'home') {
+      renderHomeContent();
+    } else if (tab === 'daily') {
+      renderDailyStart();
+    } else if (tab === 'exam') {
+      renderExamStart();
+    } else if (tab === 'wrong') {
+      renderWrongQuestions();
+    } else if (tab === 'stats') {
+      renderStats();
+    }
+
+    window.scrollTo(0, 0);
+  } catch (e) {
+    console.error('YZX switchTab failed:', e);
   }
-
-  // 重置导航历史
-  navHistory = [tab];
-
-  // 隐藏返回按钮
-  setBackButton(false);
-
-  // 根据页面渲染内容
-  if (tab === 'home') {
-    renderHomeContent();
-  } else if (tab === 'daily') {
-    renderDailyStart();
-  } else if (tab === 'exam') {
-    renderExamStart();
-  } else if (tab === 'wrong') {
-    renderWrongQuestions();
-  } else if (tab === 'stats') {
-    renderStats();
-  }
-
-  // 滚动到顶部
-  window.scrollTo(0, 0);
 }
 
 function pushNav(view) {
@@ -429,32 +633,33 @@ function setBackButton(show) {
 // ============================================================
 
 function renderHomeContent() {
-  var page = document.getElementById('page-home');
-  if (!page) { return; }
+  try {
+    var page = safeGetElement('page-home');
+    if (!page) { return; }
 
-  var html = '';
+    var html = '';
 
-  // 学习方法卡片
-  html += '<div class="section-title"><span class="dot"></span>选择学习方法</div>';
-  html += '<div class="method-grid">';
-  html += buildMethodCard('feynman');
-  html += buildMethodCard('simon');
-  html += buildMethodCard('sq3r');
-  html += buildMethodCard('quiz');
-  html += '</div>';
+    html += '<div class="section-title"><span class="dot"></span>选择学习方法</div>';
+    html += '<div class="method-grid">';
+    html += buildMethodCard('feynman');
+    html += buildMethodCard('simon');
+    html += buildMethodCard('sq3r');
+    html += buildMethodCard('quiz');
+    html += '</div>';
 
-  // 知识分类标签
-  html += '<div class="section-title"><span class="dot"></span>知识库</div>';
-  html += '<div class="tab-bar">';
-  html += '<div class="cat-tab ' + (currentCategory === 'all' ? 'active' : '') + '" onclick="filterCategory(\'all\')">全部</div>';
-  html += '<div class="cat-tab ' + (currentCategory === 'muscle' ? 'active' : '') + '" onclick="filterCategory(\'muscle\')">肌肉系统</div>';
-  html += '<div class="cat-tab ' + (currentCategory === 'disease' ? 'active' : '') + '" onclick="filterCategory(\'disease\')">常见疾病</div>';
-  html += '</div>';
+    html += '<div class="section-title"><span class="dot"></span>知识库</div>';
+    html += '<div class="tab-bar">';
+    html += '<div class="cat-tab ' + (currentCategory === 'all' ? 'active' : '') + '" onclick="filterCategory(\'all\')">全部</div>';
+    html += '<div class="cat-tab ' + (currentCategory === 'muscle' ? 'active' : '') + '" onclick="filterCategory(\'muscle\')">肌肉系统</div>';
+    html += '<div class="cat-tab ' + (currentCategory === 'disease' ? 'active' : '') + '" onclick="filterCategory(\'disease\')">常见疾病</div>';
+    html += '</div>';
 
-  // 知识点卡片列表
-  html += '<div id="kpList">' + buildKnowledgeCards() + '</div>';
+    html += '<div id="kpList">' + buildKnowledgeCards() + '</div>';
 
-  page.innerHTML = html;
+    safeSetInnerHTML(page, html);
+  } catch (e) {
+    console.error('YZX renderHomeContent failed:', e);
+  }
 }
 
 function buildMethodCard(method) {
@@ -739,27 +944,35 @@ function quizThisKnowledge(type, dataIndex) {
 // ============================================================
 
 function openModal(title, bodyHtml) {
-  var container = document.getElementById('modalContainer');
-  if (!container) { return; }
-  var html = '';
-  html += '<div class="modal-mask" id="modalMask" onclick="onMaskClick(event)">';
-  html += '<div class="modal-content" onclick="event.stopPropagation()">';
-  html += '<div class="modal-head">';
-  html += '<span class="m-title">' + escapeHtml(title) + '</span>';
-  html += '<button class="modal-close" onclick="closeModal()">✕</button>';
-  html += '</div>';
-  html += '<div class="modal-body">' + bodyHtml + '</div>';
-  html += '</div>';
-  html += '</div>';
-  container.innerHTML = html;
-  document.body.style.overflow = 'hidden';
+  try {
+    var container = safeGetElement('modalContainer');
+    if (!container) { return; }
+    var html = '';
+    html += '<div class="modal-mask" id="modalMask" onclick="onMaskClick(event)">';
+    html += '<div class="modal-content" onclick="event.stopPropagation()">';
+    html += '<div class="modal-head">';
+    html += '<span class="m-title">' + escapeHtml(title) + '</span>';
+    html += '<button class="modal-close" onclick="closeModal()">✕</button>';
+    html += '</div>';
+    html += '<div class="modal-body">' + bodyHtml + '</div>';
+    html += '</div>';
+    html += '</div>';
+    safeSetInnerHTML(container, html);
+    document.body.style.overflow = 'hidden';
+  } catch (e) {
+    console.error('YZX openModal failed:', e);
+  }
 }
 
 function closeModal() {
-  var container = document.getElementById('modalContainer');
-  if (container) { container.innerHTML = ''; }
-  document.body.style.overflow = '';
-  flashcardCtx = null;
+  try {
+    var container = safeGetElement('modalContainer');
+    if (container) { safeSetInnerHTML(container, ''); }
+    document.body.style.overflow = '';
+    flashcardCtx = null;
+  } catch (e) {
+    console.error('YZX closeModal failed:', e);
+  }
 }
 
 function onMaskClick(e) {
@@ -773,27 +986,31 @@ function onMaskClick(e) {
 // ============================================================
 
 function renderDailyStart() {
-  var page = document.getElementById('page-daily');
-  if (!page) { return; }
-  setBackButton(false);
+  try {
+    var page = safeGetElement('page-daily');
+    if (!page) { return; }
+    setBackButton(false);
 
-  var todayDone = (state.dailyDoneDate === getTodayStr());
-  var html = '';
-  html += '<div class="start-screen">';
-  html += '<div class="big-icon">✅</div>';
-  html += '<div class="start-title">每日打卡</div>';
-  html += '<div class="start-desc">每天 10 道随机题<br>坚持学习，巩固肌骨康复知识</div>';
-  html += '<div class="start-info">';
-  html += '<div class="info-item"><div class="info-num">10</div><div class="info-label">题目数</div></div>';
-  html += '<div class="info-item"><div class="info-num">' + state.dailyDoneCount + '</div><div class="info-label">今日打卡</div></div>';
-  html += '<div class="info-item"><div class="info-num">' + state.streak + '</div><div class="info-label">连续天数</div></div>';
-  html += '</div>';
-  if (todayDone) {
-    html += '<div style="color:var(--success);font-size:13px;margin-bottom:16px">🎉 今日已完成打卡，可继续练习</div>';
+    var todayDone = (state.dailyDoneDate === getTodayStr());
+    var html = '';
+    html += '<div class="start-screen">';
+    html += '<div class="big-icon">✅</div>';
+    html += '<div class="start-title">每日打卡</div>';
+    html += '<div class="start-desc">每天 10 道随机题<br>坚持学习，巩固肌骨康复知识</div>';
+    html += '<div class="start-info">';
+    html += '<div class="info-item"><div class="info-num">10</div><div class="info-label">题目数</div></div>';
+    html += '<div class="info-item"><div class="info-num">' + state.dailyDoneCount + '</div><div class="info-label">今日打卡</div></div>';
+    html += '<div class="info-item"><div class="info-num">' + state.streak + '</div><div class="info-label">连续天数</div></div>';
+    html += '</div>';
+    if (todayDone) {
+      html += '<div style="color:var(--success);font-size:13px;margin-bottom:16px">🎉 今日已完成打卡，可继续练习</div>';
+    }
+    html += '<button class="btn-primary" onclick="startDailyQuiz()">开始打卡</button>';
+    html += '</div>';
+    safeSetInnerHTML(page, html);
+  } catch (e) {
+    console.error('YZX renderDailyStart failed:', e);
   }
-  html += '<button class="btn-primary" onclick="startDailyQuiz()">开始打卡</button>';
-  html += '</div>';
-  page.innerHTML = html;
 }
 
 function startDailyQuiz() {
@@ -825,29 +1042,32 @@ function startDailyQuizWithQuestions(questions) {
 // ============================================================
 
 function renderExamStart() {
-  var page = document.getElementById('page-exam');
-  if (!page) { return; }
-  setBackButton(false);
+  try {
+    var page = safeGetElement('page-exam');
+    if (!page) { return; }
+    setBackButton(false);
 
-  // 清理计时器
-  if (examModeState.timerInterval) {
-    clearInterval(examModeState.timerInterval);
-    examModeState.timerInterval = null;
+    if (examModeState.timerInterval) {
+      clearInterval(examModeState.timerInterval);
+      examModeState.timerInterval = null;
+    }
+
+    var html = '';
+    html += '<div class="start-screen">';
+    html += '<div class="big-icon">📝</div>';
+    html += '<div class="start-title">考试模式</div>';
+    html += '<div class="start-desc">100 道随机题 · 60 分钟<br>检验综合掌握水平，错题自动加入错题本</div>';
+    html += '<div class="start-info">';
+    html += '<div class="info-item"><div class="info-num">100</div><div class="info-label">题目数</div></div>';
+    html += '<div class="info-item"><div class="info-num">60</div><div class="info-label">分钟</div></div>';
+    html += '<div class="info-item"><div class="info-num">' + state.examDoneCount + '</div><div class="info-label">已考次数</div></div>';
+    html += '</div>';
+    html += '<button class="btn-primary" onclick="startExamMode()">开始考试</button>';
+    html += '</div>';
+    safeSetInnerHTML(page, html);
+  } catch (e) {
+    console.error('YZX renderExamStart failed:', e);
   }
-
-  var html = '';
-  html += '<div class="start-screen">';
-  html += '<div class="big-icon">📝</div>';
-  html += '<div class="start-title">考试模式</div>';
-  html += '<div class="start-desc">100 道随机题 · 60 分钟<br>检验综合掌握水平，错题自动加入错题本</div>';
-  html += '<div class="start-info">';
-  html += '<div class="info-item"><div class="info-num">100</div><div class="info-label">题目数</div></div>';
-  html += '<div class="info-item"><div class="info-num">60</div><div class="info-label">分钟</div></div>';
-  html += '<div class="info-item"><div class="info-num">' + state.examDoneCount + '</div><div class="info-label">已考次数</div></div>';
-  html += '</div>';
-  html += '<button class="btn-primary" onclick="startExamMode()">开始考试</button>';
-  html += '</div>';
-  page.innerHTML = html;
 }
 
 function startExamMode() {
@@ -939,77 +1159,79 @@ function resumeExam() {
 // ============================================================
 
 function renderExamQuestion() {
-  var pageId = (examModeState.mode === 'exam') ? 'page-exam' : 'page-daily';
-  var page = document.getElementById(pageId);
-  if (!page) { return; }
+  try {
+    var pageId = (examModeState.mode === 'exam') ? 'page-exam' : 'page-daily';
+    var page = safeGetElement(pageId);
+    if (!page) { return; }
 
-  if (examModeState.currentIndex >= examModeState.questions.length) {
-    submitExam();
-    return;
-  }
-
-  var q = examModeState.questions[examModeState.currentIndex];
-  examModeState.answered = false;
-
-  var html = '';
-  // 头部：进度 + 计时/暂停
-  html += '<div class="q-header">';
-  html += '<div class="q-progress">第 <span class="num">' + (examModeState.currentIndex + 1) + '</span> / ' + examModeState.questions.length + ' 题</div>';
-  if (examModeState.mode === 'exam') {
-    var elapsed = Math.floor((Date.now() - examModeState.startTime - examModeState.elapsedTime) / 1000);
-    var remaining = 60 * 60 - elapsed;
-    if (remaining < 0) { remaining = 0; }
-    var min = Math.floor(remaining / 60);
-    var sec = remaining % 60;
-    if (min < 10) { min = '0' + min; }
-    if (sec < 10) { sec = '0' + sec; }
-    var cls = 'q-timer';
-    if (remaining < 60) { cls = 'q-timer danger'; }
-    else if (remaining < 300) { cls = 'q-timer warn'; }
-    html += '<div style="display:flex;gap:8px;align-items:center">';
-    html += '<div class="' + cls + '" id="examTimer">' + min + ':' + sec + '</div>';
-    html += '<button class="back-btn" style="background:var(--primary-bg);color:var(--primary)" onclick="pauseExam()">⏸</button>';
-    html += '</div>';
-  }
-  html += '</div>';
-
-  // 题目类型标签
-  var typeLabel = (q.type === 'judge') ? '判断题' : '单选题';
-  var typeCls = (q.type === 'judge') ? 'judge' : 'single';
-  html += '<span class="q-type-tag ' + typeCls + '">' + typeLabel + '</span>';
-
-  // 题干
-  html += '<div class="q-question">' + escapeHtml(q.q) + '</div>';
-
-  // 选项
-  html += '<div class="q-options" id="qOptions">';
-  if (q.type === 'judge') {
-    html += buildOption(0, '正确', '✓');
-    html += buildOption(1, '错误', '✗');
-  } else if (q.options && q.options.length) {
-    var labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-    for (var i = 0; i < q.options.length; i++) {
-      var lbl = labels[i] || String(i + 1);
-      html += buildOption(i, q.options[i], lbl);
+    if (!examModeState.questions || examModeState.currentIndex >= examModeState.questions.length) {
+      submitExam();
+      return;
     }
+
+    var q = examModeState.questions[examModeState.currentIndex];
+    if (!q) {
+      examModeState.currentIndex++;
+      renderExamQuestion();
+      return;
+    }
+    examModeState.answered = false;
+
+    var html = '';
+    html += '<div class="q-header">';
+    html += '<div class="q-progress">第 <span class="num">' + (examModeState.currentIndex + 1) + '</span> / ' + examModeState.questions.length + ' 题</div>';
+    if (examModeState.mode === 'exam') {
+      var elapsed = Math.floor((Date.now() - examModeState.startTime - examModeState.elapsedTime) / 1000);
+      var remaining = 60 * 60 - elapsed;
+      if (remaining < 0) { remaining = 0; }
+      var min = Math.floor(remaining / 60);
+      var sec = remaining % 60;
+      if (min < 10) { min = '0' + min; }
+      if (sec < 10) { sec = '0' + sec; }
+      var cls = 'q-timer';
+      if (remaining < 60) { cls = 'q-timer danger'; }
+      else if (remaining < 300) { cls = 'q-timer warn'; }
+      html += '<div style="display:flex;gap:8px;align-items:center">';
+      html += '<div class="' + cls + '" id="examTimer">' + min + ':' + sec + '</div>';
+      html += '<button class="back-btn" style="background:var(--primary-bg);color:var(--primary)" onclick="pauseExam()">⏸</button>';
+      html += '</div>';
+    }
+    html += '</div>';
+
+    var typeLabel = (q.type === 'judge') ? '判断题' : '单选题';
+    var typeCls = (q.type === 'judge') ? 'judge' : 'single';
+    html += '<span class="q-type-tag ' + typeCls + '">' + typeLabel + '</span>';
+
+    html += '<div class="q-question">' + escapeHtml(q.q || '') + '</div>';
+
+    html += '<div class="q-options" id="qOptions">';
+    if (q.type === 'judge') {
+      html += buildOption(0, '正确', '✓');
+      html += buildOption(1, '错误', '✗');
+    } else if (q.options && q.options.length) {
+      var labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+      for (var i = 0; i < q.options.length; i++) {
+        var lbl = labels[i] || String(i + 1);
+        html += buildOption(i, q.options[i], lbl);
+      }
+    }
+    html += '</div>';
+
+    html += '<div id="qFeedback"></div>';
+
+    var isLast = (examModeState.currentIndex === examModeState.questions.length - 1);
+    var btnText = isLast ? '提交并查看结果' : '下一题';
+    html += '<button class="btn-primary btn-block" id="nextBtn" style="display:none" onclick="nextExamQuestion()">' + btnText + '</button>';
+
+    if (examModeState.mode === 'exam') {
+      html += '<div style="text-align:center;margin-top:12px"><button class="btn-secondary" style="width:auto;padding:8px 20px;font-size:13px" onclick="confirmSubmitExam(true)">提前交卷</button></div>';
+    }
+
+    safeSetInnerHTML(page, html);
+    window.scrollTo(0, 0);
+  } catch (e) {
+    console.error('YZX renderExamQuestion failed:', e);
   }
-  html += '</div>';
-
-  // 反馈区
-  html += '<div id="qFeedback"></div>';
-
-  // 下一题按钮
-  var isLast = (examModeState.currentIndex === examModeState.questions.length - 1);
-  var btnText = isLast ? '提交并查看结果' : '下一题';
-  html += '<button class="btn-primary btn-block" id="nextBtn" style="display:none" onclick="nextExamQuestion()">' + btnText + '</button>';
-
-  // 考试模式提供放弃按钮
-  if (examModeState.mode === 'exam') {
-    html += '<div style="text-align:center;margin-top:12px"><button class="btn-secondary" style="width:auto;padding:8px 20px;font-size:13px" onclick="confirmSubmitExam(true)">提前交卷</button></div>';
-  }
-
-  page.innerHTML = html;
-  window.scrollTo(0, 0);
 }
 
 function buildOption(index, text, label) {
@@ -1022,68 +1244,71 @@ function buildOption(index, text, label) {
 }
 
 function selectExamOption(index) {
-  if (examModeState.answered) { return; }
-  examModeState.answered = true;
+  try {
+    if (examModeState.answered) { return; }
+    examModeState.answered = true;
 
-  var q = examModeState.questions[examModeState.currentIndex];
-  var correctIndex;
-  if (q.type === 'judge') {
-    correctIndex = q.answer ? 0 : 1;
-  } else {
-    correctIndex = q.answer;
-  }
+    var q = examModeState.questions[examModeState.currentIndex];
+    if (!q) { return; }
 
-  var isCorrect = (index === correctIndex);
-
-  // 记录用户答案
-  var userAnswer;
-  if (q.type === 'judge') {
-    userAnswer = (index === 0); // true/false
-  } else {
-    userAnswer = index;
-  }
-  examModeState.userAnswers[examModeState.currentIndex] = userAnswer;
-
-  // 标记选项
-  var options = document.querySelectorAll('#qOptions .q-option');
-  for (var i = 0; i < options.length; i++) {
-    options[i].onclick = null;
-    options[i].classList.add('disabled');
-    if (i === correctIndex) {
-      options[i].classList.add('correct');
-    } else if (i === index) {
-      options[i].classList.add('wrong');
+    var correctIndex;
+    if (q.type === 'judge') {
+      correctIndex = q.answer ? 0 : 1;
+    } else {
+      correctIndex = q.answer;
     }
+
+    var isCorrect = (index === correctIndex);
+
+    var userAnswer;
+    if (q.type === 'judge') {
+      userAnswer = (index === 0);
+    } else {
+      userAnswer = index;
+    }
+    examModeState.userAnswers[examModeState.currentIndex] = userAnswer;
+
+    var options = safeQuerySelectorAll('#qOptions .q-option');
+    for (var i = 0; i < options.length; i++) {
+      try {
+        options[i].onclick = null;
+        options[i].classList.add('disabled');
+        if (i === correctIndex) {
+          options[i].classList.add('correct');
+        } else if (i === index) {
+          options[i].classList.add('wrong');
+        }
+      } catch (e) {}
+    }
+
+    var feedback = safeGetElement('qFeedback');
+    var correctText = getCorrectText(q, correctIndex);
+    var html = '';
+    if (isCorrect) {
+      examModeState.score++;
+      state.coins += 5;
+      state.exp += 10;
+      state.totalCorrect++;
+      html += '<div class="feedback correct">✓ 答对了！+5🪙 +10经验</div>';
+    } else {
+      html += '<div class="feedback wrong">✗ 答错了';
+      html += '<span class="answer-hint">正确答案：' + escapeHtml(correctText) + '</span>';
+      html += '</div>';
+      addWrongQuestion(q, userAnswer);
+    }
+    state.totalAnswered++;
+    updateTagStats(q, isCorrect);
+
+    if (feedback) { safeSetInnerHTML(feedback, html); }
+
+    var nextBtn = safeGetElement('nextBtn');
+    if (nextBtn) { nextBtn.style.display = 'block'; }
+
+    updateStats();
+    saveState();
+  } catch (e) {
+    console.error('YZX selectExamOption failed:', e);
   }
-
-  // 反馈
-  var feedback = document.getElementById('qFeedback');
-  var correctText = getCorrectText(q, correctIndex);
-  var html = '';
-  if (isCorrect) {
-    examModeState.score++;
-    state.coins += 5;
-    state.exp += 10;
-    state.totalCorrect++;
-    html += '<div class="feedback correct">✓ 答对了！+5🪙 +10经验</div>';
-  } else {
-    html += '<div class="feedback wrong">✗ 答错了';
-    html += '<span class="answer-hint">正确答案：' + escapeHtml(correctText) + '</span>';
-    html += '</div>';
-    addWrongQuestion(q, userAnswer);
-  }
-  state.totalAnswered++;
-  // 更新标签统计
-  updateTagStats(q, isCorrect);
-
-  if (feedback) { feedback.innerHTML = html; }
-
-  // 显示下一题按钮
-  var nextBtn = document.getElementById('nextBtn');
-  if (nextBtn) { nextBtn.style.display = 'block'; }
-
-  updateStats();
-  saveState();
 }
 
 function getCorrectText(q, correctIndex) {
@@ -1146,111 +1371,119 @@ function confirmSubmitExam(early) {
 }
 
 function submitExam() {
-  if (examModeState.finished) { return; }
-  examModeState.finished = true;
+  try {
+    if (examModeState.finished) { return; }
+    examModeState.finished = true;
 
-  // 停止计时器
-  if (examModeState.timerInterval) {
-    clearInterval(examModeState.timerInterval);
-    examModeState.timerInterval = null;
-  }
-
-  // 移除暂停遮罩
-  var mask = document.getElementById('pauseMask');
-  if (mask) { mask.parentNode.removeChild(mask); }
-
-  var total = examModeState.questions.length;
-  var score = examModeState.score;
-  var accuracy = total > 0 ? Math.round((score / total) * 100) : 0;
-  var elapsedSec = 0;
-  if (examModeState.mode === 'exam' && examModeState.startTime) {
-    elapsedSec = Math.floor((Date.now() - examModeState.startTime - examModeState.elapsedTime) / 1000);
-  }
-
-  // 更新全局统计
-  state.completionCount++;
-  if (examModeState.mode === 'daily') {
-    state.dailyDoneCount++;
-    state.dailyDoneDate = getTodayStr();
-    state.coins += 20;
-    state.exp += 30;
-  } else {
-    state.examDoneCount++;
-    state.coins += 50;
-    state.exp += 80;
-    // 考试及格额外奖励
-    if (accuracy >= 60) {
-      state.coins += 30;
-      state.exp += 50;
+    if (examModeState.timerInterval) {
+      clearInterval(examModeState.timerInterval);
+      examModeState.timerInterval = null;
     }
+
+    var mask = safeGetElement('pauseMask');
+    if (mask && mask.parentNode) {
+      try {
+        mask.parentNode.removeChild(mask);
+      } catch (e) {}
+    }
+
+    var total = examModeState.questions ? examModeState.questions.length : 0;
+    var score = examModeState.score;
+    var accuracy = total > 0 ? Math.round((score / total) * 100) : 0;
+    var elapsedSec = 0;
+    if (examModeState.mode === 'exam' && examModeState.startTime) {
+      elapsedSec = Math.floor((Date.now() - examModeState.startTime - examModeState.elapsedTime) / 1000);
+    }
+
+    state.completionCount++;
+    if (examModeState.mode === 'daily') {
+      state.dailyDoneCount++;
+      state.dailyDoneDate = getTodayStr();
+      state.coins += 20;
+      state.exp += 30;
+    } else {
+      state.examDoneCount++;
+      state.coins += 50;
+      state.exp += 80;
+      if (accuracy >= 60) {
+        state.coins += 30;
+        state.exp += 50;
+      }
+    }
+
+    saveState();
+    updateStats();
+
+    renderExamResult(score, total, accuracy, elapsedSec);
+    pushNav(examModeState.mode + '-result');
+    setBackButton(true);
+  } catch (e) {
+    console.error('YZX submitExam failed:', e);
   }
-
-  // 错题已加入错题本（答题时处理）
-  saveState();
-  updateStats();
-
-  // 渲染结果页
-  renderExamResult(score, total, accuracy, elapsedSec);
-  pushNav(examModeState.mode + '-result');
-  setBackButton(true);
 }
 
 function renderExamResult(score, total, accuracy, elapsedSec) {
-  var pageId = (examModeState.mode === 'exam') ? 'page-exam' : 'page-daily';
-  var page = document.getElementById(pageId);
-  if (!page) { return; }
+  try {
+    var pageId = (examModeState.mode === 'exam') ? 'page-exam' : 'page-daily';
+    var page = safeGetElement(pageId);
+    if (!page) { return; }
 
-  var emoji = '🎉';
-  var title = '完成打卡！';
-  if (examModeState.mode === 'exam') {
-    title = accuracy >= 60 ? '考试通过！' : '考试未通过';
-    if (accuracy >= 90) { emoji = '🏆'; }
-    else if (accuracy >= 60) { emoji = '🎉'; }
-    else { emoji = '💪'; }
-  } else {
-    if (accuracy >= 90) { emoji = '🏆'; }
-    else if (accuracy >= 60) { emoji = '🎉'; }
-    else { emoji = '💪'; }
-  }
-
-  var min = Math.floor(elapsedSec / 60);
-  var sec = elapsedSec % 60;
-  var timeStr = min + '分' + sec + '秒';
-
-  var html = '';
-  html += '<div class="result-card">';
-  html += '<div class="result-emoji">' + emoji + '</div>';
-  html += '<div class="result-title">' + title + '</div>';
-  html += '<div class="result-score">' + score + '<span class="small">/' + total + '</span></div>';
-  html += '<div class="result-meta">';
-  html += '<div><div class="meta-num">' + accuracy + '%</div><div class="meta-label">正确率</div></div>';
-  html += '<div><div class="meta-num">' + timeStr + '</div><div class="meta-label">用时</div></div>';
-  if (examModeState.wrongQuestions.length > 0) {
-    html += '<div><div class="meta-num">' + examModeState.wrongQuestions.length + '</div><div class="meta-label">错题数</div></div>';
-  }
-  html += '</div>';
-  html += '</div>';
-
-  // 错题回顾
-  if (examModeState.wrongQuestions.length > 0) {
-    html += '<div class="section-title"><span class="dot"></span>错题回顾</div>';
-    for (var i = 0; i < examModeState.wrongQuestions.length; i++) {
-      html += buildReviewItem(examModeState.wrongQuestions[i]);
+    var emoji = '🎉';
+    var title = '完成打卡！';
+    if (examModeState.mode === 'exam') {
+      title = accuracy >= 60 ? '考试通过！' : '考试未通过';
+      if (accuracy >= 90) { emoji = '🏆'; }
+      else if (accuracy >= 60) { emoji = '🎉'; }
+      else { emoji = '💪'; }
+    } else {
+      if (accuracy >= 90) { emoji = '🏆'; }
+      else if (accuracy >= 60) { emoji = '🎉'; }
+      else { emoji = '💪'; }
     }
-  }
 
-  // 按钮
-  html += '<div class="btn-row">';
-  if (examModeState.wrongQuestions.length > 0) {
-    html += '<button class="btn-secondary" onclick="switchTab(\'wrong\')">查看错题本</button>';
-  }
-  var againText = (examModeState.mode === 'exam') ? '再考一次' : '再来一次';
-  var againFn = (examModeState.mode === 'exam') ? 'startExamMode()' : 'startDailyQuiz()';
-  html += '<button class="btn-primary" onclick="' + againFn + '">' + againText + '</button>';
-  html += '</div>';
+    var min = Math.floor(elapsedSec / 60);
+    var sec = elapsedSec % 60;
+    var timeStr = min + '分' + sec + '秒';
 
-  page.innerHTML = html;
-  window.scrollTo(0, 0);
+    var html = '';
+    html += '<div class="result-card">';
+    html += '<div class="result-emoji">' + emoji + '</div>';
+    html += '<div class="result-title">' + title + '</div>';
+    html += '<div class="result-score">' + score + '<span class="small">/' + total + '</span></div>';
+    html += '<div class="result-meta">';
+    html += '<div><div class="meta-num">' + accuracy + '%</div><div class="meta-label">正确率</div></div>';
+    html += '<div><div class="meta-num">' + timeStr + '</div><div class="meta-label">用时</div></div>';
+    if (examModeState.wrongQuestions && examModeState.wrongQuestions.length > 0) {
+      html += '<div><div class="meta-num">' + examModeState.wrongQuestions.length + '</div><div class="meta-label">错题数</div></div>';
+    }
+    html += '</div>';
+    html += '</div>';
+
+    if (examModeState.wrongQuestions && examModeState.wrongQuestions.length > 0) {
+      html += '<div class="section-title"><span class="dot"></span>错题回顾</div>';
+      for (var i = 0; i < examModeState.wrongQuestions.length; i++) {
+        try {
+          html += buildReviewItem(examModeState.wrongQuestions[i]);
+        } catch (e) {
+          console.warn('YZX buildReviewItem failed at index ' + i + ':', e);
+        }
+      }
+    }
+
+    html += '<div class="btn-row">';
+    if (examModeState.wrongQuestions && examModeState.wrongQuestions.length > 0) {
+      html += '<button class="btn-secondary" onclick="switchTab(\'wrong\')">查看错题本</button>';
+    }
+    var againText = (examModeState.mode === 'exam') ? '再考一次' : '再来一次';
+    var againFn = (examModeState.mode === 'exam') ? 'startExamMode()' : 'startDailyQuiz()';
+    html += '<button class="btn-primary" onclick="' + againFn + '">' + againText + '</button>';
+    html += '</div>';
+
+    safeSetInnerHTML(page, html);
+    window.scrollTo(0, 0);
+  } catch (e) {
+    console.error('YZX renderExamResult failed:', e);
+  }
 }
 
 function buildReviewItem(wq) {
@@ -1304,31 +1537,39 @@ function addWrongQuestion(question, userAnswer) {
 }
 
 function renderWrongQuestions() {
-  var page = document.getElementById('page-wrong');
-  if (!page) { return; }
-  setBackButton(false);
+  try {
+    var page = safeGetElement('page-wrong');
+    if (!page) { return; }
+    setBackButton(false);
 
-  var html = '';
-  html += '<div class="section-title"><span class="dot"></span>错题本';
-  if (wrongQuestionBank.length > 0) {
-    html += '<span style="font-size:13px;color:var(--text-tertiary);font-weight:500;margin-left:auto">共 ' + wrongQuestionBank.length + ' 题</span>';
-  }
-  html += '</div>';
-
-  if (wrongQuestionBank.length === 0) {
-    html += '<div class="empty-state">';
-    html += '<div class="e-icon">📒</div>';
-    html += '<div class="e-text">错题本为空</div>';
-    html += '<div class="e-text" style="margin-top:8px;font-size:12px">答题时答错的题目会自动加入</div>';
-    html += '</div>';
-  } else {
-    for (var i = 0; i < wrongQuestionBank.length; i++) {
-      html += buildWrongItem(wrongQuestionBank[i], i);
+    var html = '';
+    html += '<div class="section-title"><span class="dot"></span>错题本';
+    if (wrongQuestionBank && wrongQuestionBank.length > 0) {
+      html += '<span style="font-size:13px;color:var(--text-tertiary);font-weight:500;margin-left:auto">共 ' + wrongQuestionBank.length + ' 题</span>';
     }
-    html += '<button class="btn-secondary" style="margin-top:12px" onclick="clearAllWrong()">清空错题本</button>';
-  }
+    html += '</div>';
 
-  page.innerHTML = html;
+    if (!wrongQuestionBank || wrongQuestionBank.length === 0) {
+      html += '<div class="empty-state">';
+      html += '<div class="e-icon">📒</div>';
+      html += '<div class="e-text">错题本为空</div>';
+      html += '<div class="e-text" style="margin-top:8px;font-size:12px">答题时答错的题目会自动加入</div>';
+      html += '</div>';
+    } else {
+      for (var i = 0; i < wrongQuestionBank.length; i++) {
+        try {
+          html += buildWrongItem(wrongQuestionBank[i], i);
+        } catch (e) {
+          console.warn('YZX buildWrongItem failed at index ' + i + ':', e);
+        }
+      }
+      html += '<button class="btn-secondary" style="margin-top:12px" onclick="clearAllWrong()">清空错题本</button>';
+    }
+
+    safeSetInnerHTML(page, html);
+  } catch (e) {
+    console.error('YZX renderWrongQuestions failed:', e);
+  }
 }
 
 function buildWrongItem(wq, index) {
@@ -1402,82 +1643,81 @@ function doClearWrong() {
 // ============================================================
 
 function renderStats() {
-  var page = document.getElementById('page-stats');
-  if (!page) { return; }
-  setBackButton(false);
+  try {
+    var page = safeGetElement('page-stats');
+    if (!page) { return; }
+    setBackButton(false);
 
-  var accuracy = state.totalAnswered > 0 ? Math.round((state.totalCorrect / state.totalAnswered) * 100) : 0;
+    var accuracy = state.totalAnswered > 0 ? Math.round((state.totalCorrect / state.totalAnswered) * 100) : 0;
 
-  var html = '';
-  // 顶部数据卡片
-  html += '<div class="stats-grid">';
-  html += '<div class="stat-card"><div class="s-icon">📅</div><div class="s-num">' + state.studyDays + '</div><div class="s-label">学习天数</div></div>';
-  html += '<div class="stat-card"><div class="s-icon">🎯</div><div class="s-num">' + state.completionCount + '</div><div class="s-label">完成次数</div></div>';
-  html += '<div class="stat-card"><div class="s-icon">📝</div><div class="s-num">' + state.totalAnswered + '</div><div class="s-label">答题总数</div></div>';
-  html += '<div class="stat-card"><div class="s-icon">📈</div><div class="s-num">' + accuracy + '%</div><div class="s-label">正确率</div></div>';
-  html += '</div>';
+    var html = '';
+    html += '<div class="stats-grid">';
+    html += '<div class="stat-card"><div class="s-icon">📅</div><div class="s-num">' + state.studyDays + '</div><div class="s-label">学习天数</div></div>';
+    html += '<div class="stat-card"><div class="s-icon">🎯</div><div class="s-num">' + state.completionCount + '</div><div class="s-label">完成次数</div></div>';
+    html += '<div class="stat-card"><div class="s-icon">📝</div><div class="s-num">' + state.totalAnswered + '</div><div class="s-label">答题总数</div></div>';
+    html += '<div class="stat-card"><div class="s-icon">📈</div><div class="s-num">' + accuracy + '%</div><div class="s-label">正确率</div></div>';
+    html += '</div>';
 
-  // 进度信息
-  html += '<div class="card">';
-  html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
-  html += '<span style="font-size:13px;color:var(--text-secondary)">经验值</span>';
-  html += '<span style="font-size:13px;font-weight:600;color:var(--primary)">' + state.exp + ' / ' + (state.level * 100) + '</span>';
-  html += '</div>';
-  html += '<div class="mastery-bar"><div class="mastery-fill" style="width:' + (state.exp % 100) + '%"></div></div>';
-  html += '<div style="display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--text-tertiary)">';
-  html += '<span>💰 金币 ' + state.coins + '</span>';
-  html += '<span>🔥 连续 ' + state.streak + ' 天</span>';
-  html += '<span>⭐ Lv.' + state.level + '</span>';
-  html += '</div>';
-  html += '</div>';
+    html += '<div class="card">';
+    html += '<div style="display:flex;justify-content:space-between;margin-bottom:8px">';
+    html += '<span style="font-size:13px;color:var(--text-secondary)">经验值</span>';
+    html += '<span style="font-size:13px;font-weight:600;color:var(--primary)">' + state.exp + ' / ' + (state.level * 100) + '</span>';
+    html += '</div>';
+    html += '<div class="mastery-bar"><div class="mastery-fill" style="width:' + (state.exp % 100) + '%"></div></div>';
+    html += '<div style="display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--text-tertiary)">';
+    html += '<span>💰 金币 ' + state.coins + '</span>';
+    html += '<span>🔥 连续 ' + state.streak + ' 天</span>';
+    html += '<span>⭐ Lv.' + state.level + '</span>';
+    html += '</div>';
+    html += '</div>';
 
-  // 知识点掌握度
-  html += '<div class="section-title"><span class="dot"></span>知识点掌握度</div>';
-  html += '<div class="card">';
-  var tags = state.tagStats;
-  var tagArr = [];
-  for (var k in tags) {
-    if (tags.hasOwnProperty(k)) {
-      var t = tags[k];
-      var pct = t.total > 0 ? Math.round((t.correct / t.total) * 100) : 0;
-      tagArr.push({ name: k, pct: pct, total: t.total, correct: t.correct });
+    html += '<div class="section-title"><span class="dot"></span>知识点掌握度</div>';
+    html += '<div class="card">';
+    var tags = state.tagStats || {};
+    var tagArr = [];
+    for (var k in tags) {
+      if (tags.hasOwnProperty(k)) {
+        var t = tags[k];
+        var pct = t.total > 0 ? Math.round((t.correct / t.total) * 100) : 0;
+        tagArr.push({ name: k, pct: pct, total: t.total, correct: t.correct });
+      }
     }
-  }
-  // 按答题数排序，取前 8
-  tagArr.sort(function (a, b) { return b.total - a.total; });
-  if (tagArr.length === 0) {
-    html += '<div class="empty-state" style="padding:24px"><div class="e-icon">📊</div><div class="e-text">暂无答题数据</div></div>';
-  } else {
-    var showCount = Math.min(8, tagArr.length);
-    for (var i = 0; i < showCount; i++) {
-      var t2 = tagArr[i];
-      html += '<div class="mastery-bar-wrap">';
-      html += '<div class="mastery-head"><span class="m-name">' + escapeHtml(t2.name) + '</span><span class="m-pct">' + t2.pct + '% (' + t2.correct + '/' + t2.total + ')</span></div>';
-      html += '<div class="mastery-bar"><div class="mastery-fill" style="width:' + t2.pct + '%"></div></div>';
-      html += '</div>';
+    tagArr.sort(function (a, b) { return b.total - a.total; });
+    if (tagArr.length === 0) {
+      html += '<div class="empty-state" style="padding:24px"><div class="e-icon">📊</div><div class="e-text">暂无答题数据</div></div>';
+    } else {
+      var showCount = Math.min(8, tagArr.length);
+      for (var i = 0; i < showCount; i++) {
+        var t2 = tagArr[i];
+        html += '<div class="mastery-bar-wrap">';
+        html += '<div class="mastery-head"><span class="m-name">' + escapeHtml(t2.name) + '</span><span class="m-pct">' + t2.pct + '% (' + t2.correct + '/' + t2.total + ')</span></div>';
+        html += '<div class="mastery-bar"><div class="mastery-fill" style="width:' + t2.pct + '%"></div></div>';
+        html += '</div>';
+      }
     }
+    html += '</div>';
+
+    html += '<div class="section-title"><span class="dot"></span>成就徽章</div>';
+    html += '<div class="card">';
+    html += '<div class="badge-grid">';
+    html += buildBadge('🌱', '初次学习', state.studyDays >= 1);
+    html += buildBadge('🔥', '坚持7天', state.streak >= 7);
+    html += buildBadge('💪', '坚持30天', state.studyDays >= 30);
+    html += buildBadge('✍️', '答题100', state.totalAnswered >= 100);
+    html += buildBadge('🎯', '答题500', state.totalAnswered >= 500);
+    html += buildBadge('🏆', '正确80%', accuracy >= 80 && state.totalAnswered >= 50);
+    html += buildBadge('📝', '完成考试', state.examDoneCount >= 1);
+    var hasPerfectScore = examModeState.questions && examModeState.score === examModeState.questions.length && examModeState.questions.length > 0;
+    html += buildBadge('⭐', '满分打卡', hasPerfectScore);
+    html += '</div>';
+    html += '</div>';
+
+    html += '<button class="btn-secondary" style="margin-top:12px" onclick="confirmReset()">重置学习进度</button>';
+
+    safeSetInnerHTML(page, html);
+  } catch (e) {
+    console.error('YZX renderStats failed:', e);
   }
-  html += '</div>';
-
-  // 成就徽章
-  html += '<div class="section-title"><span class="dot"></span>成就徽章</div>';
-  html += '<div class="card">';
-  html += '<div class="badge-grid">';
-  html += buildBadge('🌱', '初次学习', state.studyDays >= 1);
-  html += buildBadge('🔥', '坚持7天', state.streak >= 7);
-  html += buildBadge('💪', '坚持30天', state.studyDays >= 30);
-  html += buildBadge('✍️', '答题100', state.totalAnswered >= 100);
-  html += buildBadge('🎯', '答题500', state.totalAnswered >= 500);
-  html += buildBadge('🏆', '正确80%', accuracy >= 80 && state.totalAnswered >= 50);
-  html += buildBadge('📝', '完成考试', state.examDoneCount >= 1);
-  html += buildBadge('⭐', '满分打卡', examModeState.score === examModeState.questions.length && examModeState.questions.length > 0);
-  html += '</div>';
-  html += '</div>';
-
-  // 重置按钮
-  html += '<button class="btn-secondary" style="margin-top:12px" onclick="confirmReset()">重置学习进度</button>';
-
-  page.innerHTML = html;
 }
 
 function buildBadge(icon, name, unlocked) {
